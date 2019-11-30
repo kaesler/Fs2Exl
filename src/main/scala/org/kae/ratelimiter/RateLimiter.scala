@@ -8,10 +8,11 @@ import fs2.Stream
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import cats.syntax.flatMap._
+import cats.syntax.functor._
 
-class RateLimiter(
-    period: FiniteDuration,
-    mvar: MVar[IO, Unit],
+class RateLimiterImpl(
+  period: FiniteDuration,
+  mvar: MVar[IO, Unit],
 ) {
   implicit val timer: Timer[IO] = IO.timer(ExecutionContext.global)
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
@@ -20,7 +21,7 @@ class RateLimiter(
     .fixedRate[IO](period)
     .evalMap { _ =>
       IO(println("tryPut")) *>
-        mvar.tryPut(())
+      mvar.tryPut(())
     }
     .compile
     .drain
@@ -30,13 +31,10 @@ class RateLimiter(
   def cancel(): Unit = ticks.cancel.unsafeRunSync()
 
   def apply[F[_]: LiftIO: Sync](action: F[Unit]): F[Unit] =
-    LiftIO[F]
-      .liftIO(mvar.tryTake)
+    mvar.tryTake.to[F]
       .flatMap {
         case None =>
-          //IO(println("tryTake gave None")) *>
-          LiftIO[F].liftIO(().pure[IO])
+          ().pure[IO].to[F]
         case Some(_) => action
       }
 }
-
