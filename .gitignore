@@ -1,0 +1,14 @@
+.cache-main
+.ensime
+bin/
+*.class
+.manager/
+.scala_dependencies
+.settings
+target
+project/boot
+project/target
+.cache
+
+
+
